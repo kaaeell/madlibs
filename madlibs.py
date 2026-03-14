@@ -1,5 +1,6 @@
 # Mad Libs Game
 # My first python project :)
+# update: added rating system so you can see your funniest stories
 
 import random
 
@@ -41,6 +42,9 @@ stories = [
     }
 ]
 
+# keeps track of all ratings across rounds
+all_scores = []
+
 
 def get_word_from_user(word_type):
     # keep asking until user types something
@@ -52,6 +56,39 @@ def get_word_from_user(word_type):
             return user_input
 
 
+def rate_story():
+    # ask user to rate the story out of 5
+    while True:
+        try:
+            rating = int(input("Rate your story (1 to 5 stars): ").strip())
+            if 1 <= rating <= 5:
+                return rating
+            else:
+                print("  just pick a number between 1 and 5!")
+        except ValueError:
+            print("  that's not a number lol, try again")
+
+
+def show_scoreboard():
+    if not all_scores:
+        print("no scores yet!")
+        return
+
+    print()
+    print("=" * 40)
+    print("   Scoreboard")
+    print("=" * 40)
+
+    for i, entry in enumerate(all_scores, start=1):
+        stars = "*" * entry["rating"]
+        print(f"  Round {i}: {entry['title']:<30} {stars} ({entry['rating']}/5)")
+
+    avg = sum(e["rating"] for e in all_scores) / len(all_scores)
+    print("-" * 40)
+    print(f"  Average rating: {avg:.1f} / 5.0")
+    print()
+
+
 def play_game():
     print("=" * 40)
     print("   Welcome to Mad Libs!")
@@ -60,7 +97,6 @@ def play_game():
 
     # pick a random story
     story = random.choice(stories)
-
     print(f"Story: {story['title']}")
     print()
     print("Fill in the blanks to create your story!")
@@ -68,17 +104,16 @@ def play_game():
 
     # collect all the words from user
     user_words = []
-    seen = {}  # to avoid asking for same type twice in a row
-
     for word_type in story["words"]:
         word = get_word_from_user(word_type)
         user_words.append(word)
 
-    # now fill the story
+    # fill in the story with the user's words
     filled_story = story["story"]
     for word in user_words:
-        # replace only the first {} found
-        filled_story = filled_story.replace("{" + filled_story.split("{")[1].split("}")[0] + "}", word, 1)
+        filled_story = filled_story.replace(
+            "{" + filled_story.split("{")[1].split("}")[0] + "}", word, 1
+        )
 
     print()
     print("=" * 40)
@@ -88,18 +123,37 @@ def play_game():
     print(filled_story)
     print()
 
+    # get a rating for this round
+    print("-" * 40)
+    rating = rate_story()
+    all_scores.append({"title": story["title"], "rating": rating})
+
+    # give some feedback based on rating
+    if rating == 5:
+        print("  lol that was a banger story fr")
+    elif rating >= 3:
+        print("  not bad, pretty funny!")
+    else:
+        print("  tough crowd... try different words next time")
+    print()
+
 
 def main():
     while True:
         play_game()
-
         print("-" * 40)
         again = input("Play again? (yes / no): ").strip().lower()
-        if again != "yes" and again != "y":
-            print()
+
+        if again in ("yes", "y"):
+            # ask if they wanna see the scoreboard first
+            see_scores = input("Wanna see the scoreboard first? (yes / no): ").strip().lower()
+            if see_scores in ("yes", "y"):
+                show_scoreboard()
+        else:
+            # show final scoreboard before leaving
+            show_scoreboard()
             print("Thanks for playing, bye!")
             break
-        print()
 
 
 # this makes sure main() only runs when we run this file directly
