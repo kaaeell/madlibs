@@ -32,7 +32,3 @@ I built this just for fun while learning Python. No tutorial, no assignment — 
 - [ ] Save the generated story to a text file
 - [ ] Add a GUI with tkinter
 - [ ] Load stories from a JSON file
-
----
-
-Made by [Your Name] — First Year CS Student
