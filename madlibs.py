@@ -2,6 +2,7 @@
 # My first python project :)
 # Update 1: Added rating system so you can see your funniest stories
 # Update 2: Added multiplayer mode (2 players take turns) + code cleanup
+# Update 3: Added single-player mode
 
 import random
 
@@ -48,8 +49,11 @@ stories = [
     }
 ]
 
-# Stores every round's result: title, each player's rating, and the winner
+# Stores every round's result for multiplayer: title, each player's rating, and the winner
 all_scores = []
+
+# Stores every round's result for single-player: title and rating
+solo_scores = []
 
 
 # ---------------------------------------------------------------------------
@@ -85,12 +89,18 @@ def get_player_names():
     return name1, name2
 
 
+def get_single_player_name():
+    """Ask for a single player's name."""
+    name = input("  Your name [Player]: ").strip() or "Player"
+    return name
+
+
 # ---------------------------------------------------------------------------
 # SCOREBOARD
 # ---------------------------------------------------------------------------
 
 def show_scoreboard(players):
-    """Print a formatted scoreboard for all completed rounds."""
+    """Print a formatted scoreboard for all completed multiplayer rounds."""
     if not all_scores:
         print("  No scores yet — play a round first!")
         return
@@ -129,8 +139,34 @@ def show_scoreboard(players):
     print()
 
 
+def show_scoreboard_single(player_name):
+    """Print a formatted scoreboard for all completed single-player rounds."""
+    if not solo_scores:
+        print("  No scores yet — play a round first!")
+        return
+
+    print()
+    print("=" * 50)
+    print(f"   {player_name}'s Scoreboard")
+    print("=" * 50)
+    print(f"  {'Round':<8} {'Story':<28} {'Rating'}")
+    print("-" * 50)
+
+    for i, entry in enumerate(solo_scores, start=1):
+        stars = "*" * entry["rating"]
+        print(f"  {i:<8} {entry['title']:<28} {stars}")
+
+    avg = sum(e["rating"] for e in solo_scores) / len(solo_scores)
+    best = max(solo_scores, key=lambda e: e["rating"])
+
+    print("-" * 50)
+    print(f"  Average rating : {avg:.1f}/5.0")
+    print(f"  Best story     : \"{best['title']}\" ({best['rating']}/5)")
+    print()
+
+
 # ---------------------------------------------------------------------------
-# GAME ROUND
+# GAME ROUNDS
 # ---------------------------------------------------------------------------
 
 def play_round(players):
@@ -210,6 +246,49 @@ def play_round(players):
     })
 
 
+def play_round_single(player_name):
+    """
+    Run one full round of Mad Libs in single-player mode.
+
+    How it works:
+      - The player fills in all the blanks without seeing the story.
+      - The completed story is revealed.
+      - The player rates their own story for fun.
+      - The result is saved to their personal scoreboard.
+    """
+    story = random.choice(stories)
+
+    print()
+    print(f"  Story: \"{story['title']}\"")
+    print("  Fill in the blanks — no peeking at the story!")
+    print("-" * 50)
+
+    words = [get_word(player_name, wt) for wt in story["words"]]
+    completed = _fill_story(story["story"], words)
+
+    print()
+    print("=" * 50)
+    print(f"   Your story:")
+    print("=" * 50)
+    print()
+    print(completed)
+    print()
+
+    # Player rates their own story
+    print("-" * 50)
+    rating = get_rating(player_name)
+
+    stars = "*" * rating
+    print(f"\n  You gave it {stars} ({rating}/5) — nice!")
+    print()
+
+    # Save this round's result
+    solo_scores.append({
+        "title": story["title"],
+        "rating": rating
+    })
+
+
 def _fill_story(template, words):
     """
     Replace each {placeholder} in the template with the corresponding word.
@@ -224,36 +303,75 @@ def _fill_story(template, words):
 
 
 # ---------------------------------------------------------------------------
+# MODE SELECTION
+# ---------------------------------------------------------------------------
+
+def pick_mode():
+    """Ask the player(s) whether they want single-player or multiplayer mode."""
+    print("  How many players?")
+    print("    1 — Single player")
+    print("    2 — Multiplayer (2 players take turns)")
+    while True:
+        choice = input("  Enter 1 or 2: ").strip()
+        if choice in ("1", "2"):
+            return int(choice)
+        print("  Please enter 1 or 2.")
+
+
+# ---------------------------------------------------------------------------
 # MAIN LOOP
 # ---------------------------------------------------------------------------
 
 def main():
     print()
     print("=" * 50)
-    print("   Welcome to Mad Libs! — Multiplayer Edition")
+    print("   Welcome to Mad Libs!")
     print("=" * 50)
     print()
 
-    # Get player names once at the start of the session
-    players = get_player_names()
-    p1, p2 = players
-    print(f"\n  Let's go, {p1} vs {p2}!\n")
+    mode = pick_mode()
+    print()
 
-    while True:
-        play_round(players)
+    # ── Single-player loop ──────────────────────────────────────────────────
+    if mode == 1:
+        player_name = get_single_player_name()
+        print(f"\n  Let's go, {player_name}!\n")
 
-        print("-" * 50)
-        again = input("  Play another round? (yes / no): ").strip().lower()
+        while True:
+            play_round_single(player_name)
 
-        if again in ("yes", "y"):
-            see_scores = input("  See the scoreboard first? (yes / no): ").strip().lower()
-            if see_scores in ("yes", "y"):
+            print("-" * 50)
+            again = input("  Play another round? (yes / no): ").strip().lower()
+
+            if again in ("yes", "y"):
+                see_scores = input("  See your scoreboard first? (yes / no): ").strip().lower()
+                if see_scores in ("yes", "y"):
+                    show_scoreboard_single(player_name)
+            else:
+                show_scoreboard_single(player_name)
+                print("  Thanks for playing — goodbye!")
+                break
+
+    # ── Multiplayer loop ────────────────────────────────────────────────────
+    else:
+        players = get_player_names()
+        p1, p2 = players
+        print(f"\n  Let's go, {p1} vs {p2}!\n")
+
+        while True:
+            play_round(players)
+
+            print("-" * 50)
+            again = input("  Play another round? (yes / no): ").strip().lower()
+
+            if again in ("yes", "y"):
+                see_scores = input("  See the scoreboard first? (yes / no): ").strip().lower()
+                if see_scores in ("yes", "y"):
+                    show_scoreboard(players)
+            else:
                 show_scoreboard(players)
-        else:
-            # Always show the final scoreboard before exiting
-            show_scoreboard(players)
-            print("  Thanks for playing — goodbye!")
-            break
+                print("  Thanks for playing — goodbye!")
+                break
 
 
 # Run main() only when this file is executed directly (not imported)
