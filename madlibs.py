@@ -3,8 +3,10 @@
 # Update 1: Added rating system so you can see your funniest stories
 # Update 2: Added multiplayer mode (2 players take turns) + code cleanup
 # Update 3: Added single-player mode
+# Update 4: Added more stories, story selection, and save-to-file
 
 import random
+import os
 
 # ---------------------------------------------------------------------------
 # STORIES
@@ -46,6 +48,43 @@ stories = [
             "My pet is honestly the most {adjective} thing in my life."
         ),
         "words": ["adjective", "animal", "name", "verb", "noun", "adjective", "adjective", "adjective"]
+    },
+    {
+        "title": "A Very Bad Monday",
+        "story": (
+            "I woke up on Monday feeling {adjective} and ready to {verb}.\n"
+            "But then I stepped on my {noun} and let out a {adjective} scream.\n"
+            "I was late so I had to {verb} to the bus stop in the rain.\n"
+            "My neighbor {name} saw the whole thing and started laughing.\n"
+            "By lunchtime I had already spilled {noun} all over my shirt.\n"
+            "Mondays are honestly the most {adjective} day of the week."
+        ),
+        "words": ["adjective", "verb", "noun", "adjective", "verb", "name", "noun", "adjective"]
+    },
+    {
+        "title": "The Birthday Party",
+        "story": (
+            "Last weekend I threw a {adjective} birthday party for my friend {name}.\n"
+            "We decorated the whole room with {noun} and it looked amazing.\n"
+            "Someone brought a {adjective} cake that tasted like {noun}.\n"
+            "At one point everyone started to {verb} in the living room.\n"
+            "Then the neighbor knocked on the door looking very {adjective}.\n"
+            "We had to {verb} as quietly as possible for the rest of the night.\n"
+            "It was the most {adjective} party I have ever been to."
+        ),
+        "words": ["adjective", "name", "noun", "adjective", "noun", "verb", "adjective", "verb", "adjective"]
+    },
+    {
+        "title": "Lost in the City",
+        "story": (
+            "I was trying to find the {adjective} coffee shop my friend {name} recommended.\n"
+            "I ended up in a {adjective} street I had never seen before.\n"
+            "A stranger offered to help and told me to {verb} past the big {noun}.\n"
+            "I followed their directions but somehow ended up next to a {noun}.\n"
+            "At that point I just sat down and started to {verb}.\n"
+            "Eventually I found it — it was {adjective} and totally worth it."
+        ),
+        "words": ["adjective", "name", "adjective", "verb", "noun", "noun", "verb", "adjective"]
     }
 ]
 
@@ -93,6 +132,64 @@ def get_single_player_name():
     """Ask for a single player's name."""
     name = input("  Your name [Player]: ").strip() or "Player"
     return name
+
+
+# ---------------------------------------------------------------------------
+# STORY SELECTION
+# ---------------------------------------------------------------------------
+
+def pick_story():
+    """
+    Ask the player whether they want a random story or want to choose one.
+    Returns the selected story dict.
+    """
+    print()
+    print("  How do you want to pick the story?")
+    print("    1 — Random (surprise me!)")
+    for i, s in enumerate(stories, start=2):
+        print(f"    {i} — {s['title']}")
+
+    while True:
+        choice = input(f"  Enter 1–{len(stories) + 1}: ").strip()
+        if choice == "1":
+            return random.choice(stories)
+        try:
+            index = int(choice) - 2   # offset: option 2 = stories[0]
+            if 0 <= index < len(stories):
+                return stories[index]
+        except ValueError:
+            pass
+        print(f"  Please enter a number between 1 and {len(stories) + 1}.")
+
+
+# ---------------------------------------------------------------------------
+# SAVE TO FILE
+# ---------------------------------------------------------------------------
+
+def save_story(player_name, story_title, completed_story, rating):
+    """
+    Append a completed story to mad_libs_stories.txt in the current directory.
+    Creates the file if it doesn't exist yet.
+    """
+    filename = "mad_libs_stories.txt"
+    separator = "=" * 50
+
+    with open(filename, "a", encoding="utf-8") as f:
+        f.write(f"{separator}\n")
+        f.write(f"Player : {player_name}\n")
+        f.write(f"Story  : {story_title}\n")
+        f.write(f"Rating : {'*' * rating} ({rating}/5)\n")
+        f.write(f"{separator}\n")
+        f.write(completed_story + "\n\n")
+
+    print(f"  Story saved to \"{filename}\"!")
+
+
+def ask_to_save(player_name, story_title, completed_story, rating):
+    """Ask if the player wants to save their story, then save it if yes."""
+    save = input("  Want to save this story to a file? (yes / no): ").strip().lower()
+    if save in ("yes", "y"):
+        save_story(player_name, story_title, completed_story, rating)
 
 
 # ---------------------------------------------------------------------------
@@ -180,9 +277,10 @@ def play_round(players):
       - That version is revealed too.
       - Both players rate the other's story.
       - The player whose story gets the higher combined score wins the round.
+      - Both players are offered the option to save their story.
     """
     p1, p2 = players
-    story = random.choice(stories)
+    story = pick_story()
 
     print()
     print(f"  Story: \"{story['title']}\"")
@@ -237,6 +335,11 @@ def play_round(players):
     print(f"  Round result: {p1} {rating_p1}/5  vs  {p2} {rating_p2}/5  —  Winner: {winner}")
     print()
 
+    # --- Save option ---
+    print("-" * 50)
+    ask_to_save(p1, story["title"], story_p1, rating_p1)
+    ask_to_save(p2, story["title"], story_p2, rating_p2)
+
     # Save this round's results
     all_scores.append({
         "title": story["title"],
@@ -254,9 +357,10 @@ def play_round_single(player_name):
       - The player fills in all the blanks without seeing the story.
       - The completed story is revealed.
       - The player rates their own story for fun.
+      - The player is offered the option to save the story.
       - The result is saved to their personal scoreboard.
     """
-    story = random.choice(stories)
+    story = pick_story()
 
     print()
     print(f"  Story: \"{story['title']}\"")
@@ -281,6 +385,9 @@ def play_round_single(player_name):
     stars = "*" * rating
     print(f"\n  You gave it {stars} ({rating}/5) — nice!")
     print()
+
+    # --- Save option ---
+    ask_to_save(player_name, story["title"], completed, rating)
 
     # Save this round's result
     solo_scores.append({
